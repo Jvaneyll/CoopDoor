@@ -3,8 +3,8 @@
 # The RTC module is PCF8523 and has been initialized on a Rpi3B upfront.
 
 ##INIT LIBRARIES
-import math
-from math import floor
+from datetime import date, timedelta, datetime, time, tzinfo
+from math import sin, cos, pi, floor, asin, acos, sqrt
 
 ##INIT VARIABLES
 
@@ -12,123 +12,64 @@ from math import floor
 
 ##FUNCTIONS DEFINITIONS
 
-#Sunrise/-set calculation
+##Calculate sinus and cosinus providing degrees angles
+def sinrad(deg):
+    return sin(deg * pi/180)
 
+def cosrad(deg):
+    return cos(deg * pi/180)
 
-# create wrapped trig functions which operate on degrees
-def make_degree(f):
-  return lambda x: math.degrees(f(math.radians(x)))
+##Calculate time from julian date
+def calculatetimefromjuliandate(jd):
+    jd=jd+.5
+    secs=int((jd-int(jd))*24*60*60+.5)
+    mins=int(secs/60)
+    hour=int(mins/60)  
+    return time(hour, mins % 60, secs % 60)
+    
+def calcsunriseandsunset(dt):
+	#Calculate julian date from UTC date at 00:00 UTC
+    a=floor((14-dt.month)/12)
+    y = dt.year+4800-a
+    m = dt.month+(12*a) -3
+    julian_date=dt.day+floor((153*m+2)/5)+365*y+floor(y/4)-floor(y/100)+floor(y/400)-32045
+    #Calculate current Julian day
+    ##2451545.0 : n Julian days since 01/01/2000
+    ##68.184 / 86400 fractional Julian day for leap seconds and terrestrial time
+    n= julian_date - 2451545.0 + (68.184 / 86400)
+    #Calculate solar noon at longitude
+    jstar = n - (longitude/360)
+    #Calculate solar mean anomaly
+    M=(357.5291+0.98560028*jstar) % 360
+    #Calculate equation of the center
+    ##1.9148 is the coefficient of the Equation of the Center for the planet the observer is on (in this case, Earth)
+    c=(1.9148*sinrad(M))+(0.0200*sinrad(2*M))+(0.0003*sinrad(3*M))
+    #Calculate ecliptic longitude
+    ##102.9372 is a value for the argument of perihelion.
+    l=(M+102.9372+c+180) % 360
+    #Calculate solar transit (julian date of solar noon (highest sun position in the day))
+    jtransit = jstar + 2451545.0 + (0.0053 * sinrad(M)) - (0.0069 * sinrad(2 * l))
+    #Calculate declination of sun in rad
+    delta=asin(sinrad(l) * sinrad(23.45))*180/pi
+    #Calculate Hour angle
+    H = acos((sinrad(-0.83+sqrt(150)/60*-2.076)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/pi
+    jset=jtransit + (H/360)
+    jrise=jtransit - (H/360)
+    return (calculatetimefromjuliandate(jrise), calculatetimefromjuliandate(jset))
 
-d_cos  = make_degree(math.cos)
-d_sin  = make_degree(math.sin)
-d_tan  = make_degree(math.tan)
-d_atan = make_degree(math.atan)
-d_asin = make_degree(math.asin)
-d_acos = make_degree(math.acos)
+    
+longitude=4.677301 #West
+latitude=50.645144 #North
 
 def main():
-
-  # date of interest
-  day, month, year = 8, 7, 2018
-
-  # local UTC offset
-  localOffset = +2
-
-  # NOTE: longitude is positive for East and negative for West
-  latitude, longitude = 50.645144, 4.677301
-
-  # Sun's zenith for sunrise/sunset
-  zenith = 100
-
-  # get rising time. Will get setting time if this is false
-  rising = 0
-
-  # 1. first calculate the day of the year
-  N1 = floor(275 * month / 9)
-  N2 = floor((month + 9) / 12)
-  N3 = (1 + floor((year - 4 * floor(year / 4) + 2) / 3))
-  N = N1 - (N2 * N3) + day - 30
-
-  # 2. convert the longitude to hour value and calculate an approximate time
-  lngHour = longitude / 15
-  if rising:
-    t = N + ((6 - lngHour) / 24)
-  else:
-    t = N + ((18 - lngHour) / 24)
-
-  # 3. calculate the Sun's mean anomaly
-  M = (0.9856 * t) - 3.289
-
-
-  # adjust into the specified range
-  # rng must be a list of 2 values [bottom, top]
-  def adjust(x, rng=None):
-    if not isinstance(rng, list) or len(rng) != 2:
-      raise Exception("invalid range")
-
-    bottom, top = rng[0], rng[1]
-
-    if x < bottom:
-      x = x + top
-    elif x > top:
-      x = x - top
-
-    return x
-
-  # 4. calculate the Sun's true longitude
-  L = M + (1.916 * d_sin(M)) + (0.020 * d_sin(2 * M)) + 282.634
-  L = adjust(L, rng=[0, 360])
-
-  # 5a. calculate the Sun's right ascension
-  RA = d_atan(0.91764 * d_tan(L))
-  RA = adjust(RA, rng=[0, 360])
-
-  # 5b. right ascension value needs to be in the same quadrant as L
-  Lquadrant = (floor(L / 90)) * 90
-  RAquadrant = (floor(RA / 90)) * 90
-  RA = RA + (Lquadrant - RAquadrant)
-
-  # 5c. right ascension value needs to be converted into hours
-  RA = RA / 15
-
-  # 6. calculate the Sun's declination
-  sinDec = 0.39782 * d_sin(L)
-  cosDec = d_cos(d_asin(sinDec))
-
-  # 7a. calculate the Sun's local hour angle
-  cosH = (d_cos(zenith) - (sinDec * d_sin(latitude))) / (cosDec * d_cos(latitude))
-  
-  if rising and cosH > 1:
-    raise Exception("the sun never rises on this location (on the specified date)")
-  if not rising and cosH < -1:
-    raise Exception("the sun never sets on this location (on the specified date)")
-
-  # 7b. finish calculating H and convert into hours
-  if rising:
-    H = 360 - d_acos(cosH)
-  else:
-    H = d_acos(cosH)
-
-  H = H / 15
-  
-  # 8. calculate local mean time of rising/setting
-  T = H + RA - (0.06571 * t) - 6.622
-
-  # 9. adjust back to UTC
-  UT = T - lngHour
-  UT = adjust(UT, rng=[0, 24])
-
-  # 10. convert UT value to local time zone of latitude/longitude
-  localT = UT + localOffset
-
-  if rising:
-    print("sunrise {}".format(localT))
-  else:
-    print("sunset {}".format(localT))
-
+    today=datetime(2018, 12, 24)
+    today=date.today()
+    sunrise,sunset = calcsunriseandsunset(today)
+    print sunrise, sunset
 
 if __name__ == '__main__':
     main()
+
 
 #Calculate next sunrise
 
