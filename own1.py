@@ -24,9 +24,9 @@ def calcsunriseandsunset(dt):
     m = dt.month+(12*a) -3
     julian_date=dt.day+math.floor((153*m+2)/5)+365*y+math.floor(y/4)-math.floor(y/100)+math.floor(y/400)-32045
     
-    nstar= (julian_date - 2451545.0 - 0.0009)-(longitude/360)
-    n=round(nstar)
-    jstar = 2451545.0+0.0009+(longitude/360) + n
+    nstar= (julian_date - 2451545.0 + (68.184 / 86400)-(longitude/360)
+    #n=round(nstar)
+    jstar = 2451545.0 + (68.184 / 86400) + (longitude/360) + nstar
     M=(357.5291+0.98560028*(jstar-2451545)) % 360
     c=(1.9148*sinrad(M))+(0.0200*sinrad(2*M))+(0.0003*sinrad(3*M))
     l=(M+102.9372+c+180) % 360
