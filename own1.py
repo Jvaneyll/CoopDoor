@@ -18,24 +18,33 @@ def calculatetimefromjuliandate(jd):
     return time(hour, mins % 60, secs % 60)
     
 def calcsunriseandsunset(dt):
-	#Calculate julian date from UTC date at 12:00 UTC
+	#Calculate julian date from UTC date at 00:00 UTC
     a=math.floor((14-dt.month)/12)
     y = dt.year+4800-a
     m = dt.month+(12*a) -3
     julian_date=dt.day+math.floor((153*m+2)/5)+365*y+math.floor(y/4)-math.floor(y/100)+math.floor(y/400)-32045
-    
-    nstar= (julian_date - 2451545.0 + (68.184 / 86400)-(longitude/360)
-    #n=round(nstar)
-    jstar = 2451545.0 + (68.184 / 86400) + (longitude/360) + nstar
-    M=(357.5291+0.98560028*(jstar-2451545)) % 360
+    #Calculate current Julian day
+    ##2451545.0 : n Julian days since 01/01/2000
+    ##68.184 / 86400 fractional Julian day for leap seconds and terrestrial time
+    n= julian_date - 2451545.0 + (68.184 / 86400)
+    #Calculate solar noon at longitude
+    jstar = n - (longitude/360)
+    #Calculate solar mean anomaly
+    M=(357.5291+0.98560028*jstar) % 360
+    #Calculate equation of the center
+    ##1.9148 is the coefficient of the Equation of the Center for the planet the observer is on (in this case, Earth)
     c=(1.9148*sinrad(M))+(0.0200*sinrad(2*M))+(0.0003*sinrad(3*M))
+    #Calculate ecliptic longitude
+    ##102.9372 is a value for the argument of perihelion.
     l=(M+102.9372+c+180) % 360
-    jtransit = jstar + (0.0053 * sinrad(M)) - (0.0069 * sinrad(2 * l))
+    #Calculate solar transit (julian date of solar noon (highest sun position in the day))
+    jtransit = jstar + 2451545.0 + (0.0053 * sinrad(M)) - (0.0069 * sinrad(2 * l))
+    #Calculate declination of sun in rad
     delta=math.asin(sinrad(l) * sinrad(23.45))*180/math.pi
-    H = math.acos((sinrad(-0.83)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/math.pi
-    jstarstar=2451545.0+0.0009+((H+longitude)/360)+n
-    jset=jstarstar+(0.0053*sinrad(M))-(0.0069*sinrad(2*l))
-    jrise=jtransit-(jset-jtransit)
+    #Calculate Hour angle
+    H = math.acos((sinrad(-0.83+math.sqrt(150)/60*-2.076)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/math.pi
+    jset=jtransit + (H/360)
+    jrise=jtransit - (H/360)
     return (calculatetimefromjuliandate(jrise), calculatetimefromjuliandate(jset))
 
     

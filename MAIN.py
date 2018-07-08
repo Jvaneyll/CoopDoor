@@ -29,7 +29,7 @@ d_acos = make_degree(math.acos)
 def main():
 
   # date of interest
-  day, month, year = 6, 7, 2018
+  day, month, year = 8, 7, 2018
 
   # local UTC offset
   localOffset = +2
@@ -38,7 +38,7 @@ def main():
   latitude, longitude = 50.645144, 4.677301
 
   # Sun's zenith for sunrise/sunset
-  zenith = 90
+  zenith = 100
 
   # get rising time. Will get setting time if this is false
   rising = 0
