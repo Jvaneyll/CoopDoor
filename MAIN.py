@@ -3,12 +3,25 @@
 # The RTC module is PCF8523 and has been initialized on a Rpi3B upfront.
 
 ##INIT LIBRARIES
+import board
+import digitalio
+import busio
+import adafruit_pcf8523
 from datetime import date, timedelta, datetime, time, tzinfo
 from math import sin, cos, pi, floor, asin, acos, sqrt
 
-##INIT VARIABLES
-
 ##INIT I2C connection
+## initialize i2c I/O of RTC
+i2c = busio.I2C(board.SCL, board.SDA,frequency=400000)
+rtc = adafruit_pcf8523.PCF8523(i2c)
+
+##INIT VARIABLES
+if 'i2c' in locals() and 'rtc' in locals():
+    now = rtc.datetime
+    print(now)
+else:
+    print("i2c bus and RTC not initialized !")
+    quit()
 
 ##FUNCTIONS DEFINITIONS
 
@@ -60,11 +73,11 @@ def calcsunriseandsunset(dt):
     
 longitude=4.677301 #West
 latitude=50.645144 #North
+print(longitude,latitude)
 
 def main():
-    today=datetime(2018, 12, 24)
-    today=date.today()
-    sunrise,sunset = calcsunriseandsunset(today)
+    #now=datetime(2018, 12, 24)
+    sunrise,sunset = calcsunriseandsunset(now)
     print sunrise, sunset
 
 if __name__ == '__main__':
