@@ -1,13 +1,13 @@
 from datetime import date, timedelta, datetime, time, tzinfo
-import math 
+from math import sin, cos, pi, floor, asin, acos, sqrt
 
 #define functions
 ##Calculate sinus and cosinus providing degrees angles
 def sinrad(deg):
-    return math.sin(deg * math.pi/180)
+    return sin(deg * pi/180)
 
 def cosrad(deg):
-    return math.cos(deg * math.pi/180)
+    return cos(deg * pi/180)
 
 ##Calculate time from julian date
 def calculatetimefromjuliandate(jd):
@@ -19,10 +19,10 @@ def calculatetimefromjuliandate(jd):
     
 def calcsunriseandsunset(dt):
 	#Calculate julian date from UTC date at 00:00 UTC
-    a=math.floor((14-dt.month)/12)
+    a=floor((14-dt.month)/12)
     y = dt.year+4800-a
     m = dt.month+(12*a) -3
-    julian_date=dt.day+math.floor((153*m+2)/5)+365*y+math.floor(y/4)-math.floor(y/100)+math.floor(y/400)-32045
+    julian_date=dt.day+floor((153*m+2)/5)+365*y+floor(y/4)-floor(y/100)+floor(y/400)-32045
     #Calculate current Julian day
     ##2451545.0 : n Julian days since 01/01/2000
     ##68.184 / 86400 fractional Julian day for leap seconds and terrestrial time
@@ -40,9 +40,9 @@ def calcsunriseandsunset(dt):
     #Calculate solar transit (julian date of solar noon (highest sun position in the day))
     jtransit = jstar + 2451545.0 + (0.0053 * sinrad(M)) - (0.0069 * sinrad(2 * l))
     #Calculate declination of sun in rad
-    delta=math.asin(sinrad(l) * sinrad(23.45))*180/math.pi
+    delta=asin(sinrad(l) * sinrad(23.45))*180/pi
     #Calculate Hour angle
-    H = math.acos((sinrad(-0.83+math.sqrt(150)/60*-2.076)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/math.pi
+    H = acos((sinrad(-0.83+sqrt(150)/60*-2.076)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/pi
     jset=jtransit + (H/360)
     jrise=jtransit - (H/360)
     return (calculatetimefromjuliandate(jrise), calculatetimefromjuliandate(jset))
@@ -52,9 +52,10 @@ longitude=4.677301 #West
 latitude=50.645144 #North
 
 def main():
-    today=date.today()
-    rise,set = calcsunriseandsunset(today)
-    print rise, set
+    today=datetime(2018, 12, 24)
+    #today=date.today()
+    sunrise,sunset = calcsunriseandsunset(today)
+    print sunrise, sunset
 
 if __name__ == '__main__':
     main()
