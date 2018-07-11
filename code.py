@@ -9,24 +9,26 @@ import busio
 import adafruit_pcf8523
 import time
 from math import sin, cos, pi, floor, asin, acos, sqrt
-
+print("SCRIPT START")
 ##INIT I2C CONNECTION ON RTC AND GET CURRENT DATE
 i2c = busio.I2C(board.SCL, board.SDA,frequency=400000)
 rtc = adafruit_pcf8523.PCF8523(i2c)
 if 'i2c' in locals() and 'rtc' in locals():
     now = rtc.datetime
-    print(now)
+    #print(now)
 else:
-    print("i2c bus and RTC not initialized !")
+    print("i2c bus and RTC not initialized ! EXIT")
     quit()
 
 ##INIT VARIABLES
 longitude=4.677301 #West
 latitude=50.645144 #North
-Status=1 #(Door open by default at start)
-print(longitude,latitude)
+altitude=150 #meters above sea level
+status=1 #(Door open by default at start)
+print("variables definition : log=",longitude,"lat=",latitude,"alt=",altitude,"door status=",status)
     
 ##DEFINE FUNCTIONS
+print("function def starting")
 def sinrad(deg):
     return sin(deg * pi/180)
 def cosrad(deg):
@@ -42,8 +44,11 @@ def calcjuliandate2000(dt):
     ##2451545.0 : n Julian days since 01/01/2000
     ##68.184 / 86400 fractional Julian day for leap seconds and terrestrial time
     n= julian_date - 2451545.0 + (68.184 / 86400)
+    jdf= ((dt.tm_hour-12)/24) + (dt.tm_min/1440) + (dt.tm_sec/86400) #julian day fraction (hours, min, seconds in the day)
+    ##-12  as julian day starts at noon UTC time. Fraction is 0 at 12:00
+    return(n,jdf)
 
-def sunriseandsunset(n):
+def sunriseandsunset(n,longitude,latitude,altitude):
     #Calculate solar noon at longitude
     jstar = n - (longitude/360)
     #Calculate solar mean anomaly
@@ -59,81 +64,66 @@ def sunriseandsunset(n):
     #Calculate declination of sun in rad
     delta=asin(sinrad(l) * sinrad(23.45))*180/pi
     #Calculate Hour angle
-    H = acos((sinrad(-0.83+sqrt(150)/60*-2.076)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/pi
-    print(n,jtransit,H)
+    H = acos((sinrad(-0.83+sqrt(altitude)/60*-2.076)-sinrad(latitude)*sinrad(delta))/(cosrad(latitude)*cosrad(delta)))*180/pi
     #Calculate julian sunrise and sunset from 01/01/2000 by adding/substracting Hour angle from zenith position
-    jset=jtransit + (H/360) + 0.020833
-    #0.020833 is 30 min in fraction of julian day
+    jset=jtransit + (H/360)+ 0.020833
+    #0.020833 is 30 min in fraction of julian day to delay the door closure a bit
     jrise=jtransit - (H/360)
     return (jrise, jset)
-    
-def nextsunriseandsusnset(n):
-    today_sunrise,today_sunset = sunriseandsunset(n)
-    tomorrow_sunrise,tomorrow_sunset = sunriseandsunset(n+1)
-    print (today_sunrise)
-    print(type(today_sunrise))
-    print(today_sunset)
-    print(type(today_sunset))
-    
-    print (tomorrow_sunrise, tomorrow sunset)
-    
-    if n > today_sunrise:
-		next_sunrise=todaysunriseandsunset(n+1)
-	else:
-		next_sunrise=today_sunrise
-	if n > today_sunset:
-		next_sunset=todaysunriseandsunset(n+1)
-	else:
-		next_sunset=today_sunset
-		
-	print(next_sunrise, next_sunset)
-	return(next_sunrise, next_sunset)
 
+print("function def completed")
 ##RUN PROGRAM
-# While True:
-	# now = rtc.datetime
-	# n=calcjuliandate2000(now)
-	# today_sunrise,today_sunset = sunriseandsunset(n)
-	# if n > today_sunrise and n < next_sunset:
-		# door.open()
-		# status=1
-		# next_sunrise, next_sunset = nextsunriseandsusnset(n)
-		# timetowait=(next_sunset-n)*24*60*60
-		# time.sleep(timetowait)
-	# elif n > today_sunset and n < next_sunrise:
-		# door.close()
-		# status=0
-		# next_sunrise, next_sunset = nextsunriseandsusnset(n)
-		# timetowait=(next_sunrise-n)*24*60*60
-		# time.sleep(timetowait)
-	# else:
-		# timetowait=(min(next_sunrise, next_susnset)-n)*24*60*60
-		# time.sleep(timetowait)
-
-def main():
-	now = rtc.datetime
-	n=calcjuliandate2000(now)
-	today_sunrise,today_sunset = sunriseandsunset(n)
-	print(now, n, today_sunrise, today_sunset)
-	if n > today_sunrise and n < next_sunset:
+print("start of infinite loop")
+while True:
+    now = rtc.datetime
+    #vtime=(2018,12,15,16,15,39,-1,-1,-1) #(tm_year=2018, tm_mon=7, tm_mday=10, tm_hour=18, tm_min=22, tm_sec=39, tm_wday=2, tm_yday=-1, tm_isdst=-1)
+    #now= time.struct_time(vtime)
+    n,dfrac=calcjuliandate2000(now)
+    print("now=",now,"n=",n,"dfrac=",dfrac,"n+dfrac=",n+dfrac)
+    today_sunrise,today_sunset = sunriseandsunset(n,longitude,latitude,altitude)
+    #sunrise fraction should be 0.654167 / sunset should be 1.329618
+    print("today_sunrise=",today_sunrise,today_sunrise-int(today_sunrise),"today_sunset=", today_sunset,today_sunset-int(today_sunset))
+    tomorrow_sunrise,tomorrow_sunset = sunriseandsunset(n+1,longitude,latitude,altitude)
+    print("tomorrow_sunrise=",tomorrow_sunrise,"tomorrow_sunset=",tomorrow_sunset)
+    if (n+dfrac)>today_sunrise:
+        next_sunrise=tomorrow_sunrise
+    else:
+        next_sunrise=today_sunrise
+    if (n+dfrac) > today_sunset:
+        next_sunset=tomorrow_sunset
+    else:
+        next_sunset=today_sunset
+    print("next_sunrise=",next_sunrise,"next_sunset=", next_sunset)
+    print(status)
+    print("(n+dfrac) > today_sunrise :",(n+dfrac) > today_sunrise)
+    print("(n+dfrac) < today_sunset :",(n+dfrac) < today_sunset)
+    print("(n+dfrac) > today_sunset :",(n+dfrac) > today_sunset)
+    print("(n+dfrac) < next_sunrise :",(n+dfrac) < next_sunrise)
+    if (n+dfrac) > today_sunrise and (n+dfrac) < today_sunset and status==0:
 		#door.open()
 		status=1
-		next_sunrise, next_sunset = nextsunriseandsusnset(n)
-		timetowait=(next_sunset-n)*24*60*60
-		print(status, next_sunrise, next_sunset, timetowait)
-		time.sleep(5)
-	elif n > today_sunset and n < next_sunrise:
+		next_sunrise = tomorrow_sunrise
+		timetowait=(next_sunset-(n+dfrac))*24*60*60
+		print("Block door.open()")
+        #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
+		time.sleep(timetowait)#5)
+    elif (n+dfrac) > today_sunset and (n+dfrac) < next_sunrise and status==1:
 		#door.close()
 		status=0
-		next_sunrise, next_sunset = nextsunriseandsusnset(n)
-		timetowait=(next_sunrise-n)*24*60*60
-		print(status, next_sunrise, next_sunset, timetowait)
-		time.sleep(5)
-	else:
-		timetowait=(min(next_sunrise, next_susnset)-n)*24*60*60
-		print(timetowait)
-		time.sleep(5)
-	
-    
-if __name__ == '__main__':
-    main()
+		next_sunset = tomorrow_sunset
+		timetowait=(next_sunrise-(n+dfrac))*24*60*60
+		print("Block door.close()")
+        #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
+		time.sleep(timetowait)#5)
+    elif (n+dfrac) < today_sunrise and (n+dfrac) < next_sunset and status==1:
+		#door.close()
+		status=0
+		timetowait=(next_sunrise-(n+dfrac))*24*60*60
+		print("Block door.close if before sunrise")
+        #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
+		time.sleep(timetowait)#5)
+    else:
+		timetowait=(min(next_sunrise, next_sunset)-(n+dfrac))*24*60*60
+		print("timetowait=",timetowait)
+		print("Block wait a bit more")
+		time.sleep(timetowait+60)
