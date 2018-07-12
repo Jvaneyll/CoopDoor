@@ -4,13 +4,14 @@
 
 ##INIT LIBRARIES
 import board
-import digitalio
+from digitalio import DigitalInOut, Direction, Pull
 import busio
 import adafruit_pcf8523
 import time
 from math import sin, cos, pi, floor, asin, acos, sqrt
 print("SCRIPT START")
 ##INIT I2C CONNECTION ON RTC AND GET CURRENT DATE
+#Init i2c connection
 i2c = busio.I2C(board.SCL, board.SDA,frequency=400000)
 rtc = adafruit_pcf8523.PCF8523(i2c)
 if 'i2c' in locals() and 'rtc' in locals():
@@ -26,7 +27,7 @@ latitude=50.645144 #North
 altitude=150 #meters above sea level
 status=1 #(Door open by default at start)
 print("variables definition : log=",longitude,"lat=",latitude,"alt=",altitude,"door status=",status)
-    
+
 ##DEFINE FUNCTIONS
 print("function def starting")
 def sinrad(deg):
@@ -75,16 +76,19 @@ print("function def completed")
 ##RUN PROGRAM
 print("start of infinite loop")
 while True:
+    #refresh current time
     now = rtc.datetime
     #vtime=(2018,12,15,16,15,39,-1,-1,-1) #(tm_year=2018, tm_mon=7, tm_mday=10, tm_hour=18, tm_min=22, tm_sec=39, tm_wday=2, tm_yday=-1, tm_isdst=-1)
     #now= time.struct_time(vtime)
     n,dfrac=calcjuliandate2000(now)
     print("now=",now,"n=",n,"dfrac=",dfrac,"n+dfrac=",n+dfrac)
+    #calculate sunrise and sunset of today
     today_sunrise,today_sunset = sunriseandsunset(n,longitude,latitude,altitude)
-    #sunrise fraction should be 0.654167 / sunset should be 1.329618
-    print("today_sunrise=",today_sunrise,today_sunrise-int(today_sunrise),"today_sunset=", today_sunset,today_sunset-int(today_sunset))
+    print("today_sunrise=",today_sunrise,"today_sunset=", today_sunset)
+    #calculate sunrise and sunset of tomorrow
     tomorrow_sunrise,tomorrow_sunset = sunriseandsunset(n+1,longitude,latitude,altitude)
     print("tomorrow_sunrise=",tomorrow_sunrise,"tomorrow_sunset=",tomorrow_sunset)
+    #decide which is next sunrise and next sunset
     if (n+dfrac)>today_sunrise:
         next_sunrise=tomorrow_sunrise
     else:
@@ -94,36 +98,36 @@ while True:
     else:
         next_sunset=today_sunset
     print("next_sunrise=",next_sunrise,"next_sunset=", next_sunset)
-    print(status)
-    print("(n+dfrac) > today_sunrise :",(n+dfrac) > today_sunrise)
-    print("(n+dfrac) < today_sunset :",(n+dfrac) < today_sunset)
-    print("(n+dfrac) > today_sunset :",(n+dfrac) > today_sunset)
-    print("(n+dfrac) < next_sunrise :",(n+dfrac) < next_sunrise)
+    print("door status before = ",status)
+    #Logic to open/close the door at right times + update variables next sunrise/next sunset
+    #Open at sunrise
     if (n+dfrac) > today_sunrise and (n+dfrac) < today_sunset and status==0:
 		#door.open()
 		status=1
 		next_sunrise = tomorrow_sunrise
 		timetowait=(next_sunset-(n+dfrac))*24*60*60
-		print("Block door.open()")
+		print("Block door.open()"," - timetowait=",timetowait)
         #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
 		time.sleep(timetowait)#5)
+    #Close at sunset
     elif (n+dfrac) > today_sunset and (n+dfrac) < next_sunrise and status==1:
 		#door.close()
 		status=0
 		next_sunset = tomorrow_sunset
 		timetowait=(next_sunrise-(n+dfrac))*24*60*60
-		print("Block door.close()")
+		print("Block door.close()", "status after=",status, "timetowait(h)=",timetowait/3600)
         #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
 		time.sleep(timetowait)#5)
+    #Close before sunrise in case door re-init before (unlikely but never know...)
     elif (n+dfrac) < today_sunrise and (n+dfrac) < next_sunset and status==1:
 		#door.close()
 		status=0
 		timetowait=(next_sunrise-(n+dfrac))*24*60*60
-		print("Block door.close if before sunrise")
+		print("Block door.close if before sunrise"," - timetowait(h)=",timetowait/3600)
         #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
 		time.sleep(timetowait)#5)
+    #When time precision does not allow to decide, wait 1 min to re-run loop
     else:
 		timetowait=(min(next_sunrise, next_sunset)-(n+dfrac))*24*60*60
-		print("timetowait=",timetowait)
-		print("Block wait a bit more")
+		print("Block wait a bit more"," - timetowait(h)=",timetowait/3600)
 		time.sleep(timetowait+60)
