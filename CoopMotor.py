@@ -4,7 +4,7 @@ from digitalio import DigitalInOut, Direction, Pull
 import busio
 import pulseio
 import time
- 
+
 ##INIT
 #init pins on board
 PWM_pin= pulseio.PWMOut(board.D3, frequency=5000, duty_cycle=0)
@@ -25,12 +25,12 @@ STOP = 1
 FWD = 2
 REV = 3
 ## Duty cycles
-FW_runtime = 15
-RV_runtime = 15
+open_runtime = 22.00
+close_runtime = 22.00
 FW_dc=100
 RV_dc=100
 
-##FUNCTION DEFINITION		
+##FUNCTION DEFINITION
 def MotDir(rot):
 	""" Define rotation direction for motor """
 	if(rot == FWD):
@@ -51,7 +51,7 @@ def Inactive():
 def Active(dc):
 	""" Activate H bridge """
 	PWM_pin.duty_cycle = int(dc * 65535 / 100)
-    
+
 def opendoor(dc,runtime):
     Inactive()
     MotDir(2)
@@ -66,8 +66,10 @@ def closedoor(dc,runtime):
     time.sleep(runtime)
     Inactive()
 
-for i in range(1,10,1):
+for i in range(0,100,1):
+	closedoor(RV_dc,close_runtime)
 	Inactive()
-	closedoor(RV_dc,RV_runtime)
-	time.sleep(2)
-	opendoor(FW_dc,FW_runtime)
+	time.sleep(3)
+	opendoor(FW_dc,open_runtime)
+	Inactive()
+	time.sleep(3)
