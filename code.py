@@ -8,6 +8,19 @@ import time
 from math import sin, cos, pi, floor, asin, acos, sqrt
 
 print("SCRIPT START")
+
+#INIT MOTOR CONTROL PINS ON BOARD
+PWM_pin= pulseio.PWMOut(board.D3, frequency=5000, duty_cycle=0)
+FW_pin=DigitalInOut(board.D1)
+FW_pin.direction = Direction.OUTPUT
+RV_pin=DigitalInOut(board.D4)
+RV_pin.direction = Direction.OUTPUT
+
+#INIT RED LED on board
+led = DigitalInOut(board.D13)
+led.direction = Direction.OUTPUT
+led.value = 0
+
 ##INIT I2C CONNECTION ON RTC AND GET CURRENT DATE
 i2c = busio.I2C(board.SCL, board.SDA,frequency=400000)
 rtc = adafruit_pcf8523.PCF8523(i2c)
@@ -16,14 +29,9 @@ if 'i2c' in locals() and 'rtc' in locals():
     print(now)
 else:
     print("i2c bus and RTC not initialized !")
+    led.value = 1
+    time.sleep(10)
     quit()
-
-#INIT MOTOR CONTROL PINS ON BOARD
-PWM_pin= pulseio.PWMOut(board.D3, frequency=5000, duty_cycle=0)
-FW_pin=DigitalInOut(board.D1)
-FW_pin.direction = Direction.OUTPUT
-RV_pin=DigitalInOut(board.D4)
-RV_pin.direction = Direction.OUTPUT
     
 #INIT VARIABLES
 #time calculation variables
