@@ -2,35 +2,28 @@
 #INIT LIBRARIES
 import board
 from digitalio import DigitalInOut, Direction, Pull
-import busio
-import pulseio
-import time
+from busio import I2C
+from pulseio import PWMOut
+from adafruit_pcf8523 import PCF8523
+from time import sleep, struct_time
 from math import sin, cos, pi, floor, asin, acos, sqrt
 
 print("SCRIPT START")
 
 #INIT MOTOR CONTROL PINS ON BOARD
-PWM_pin= pulseio.PWMOut(board.D3, frequency=5000, duty_cycle=0)
+PWM_pin= PWMOut(board.D3, frequency=5000, duty_cycle=0)
 FW_pin=DigitalInOut(board.D1)
 FW_pin.direction = Direction.OUTPUT
 RV_pin=DigitalInOut(board.D4)
 RV_pin.direction = Direction.OUTPUT
 
-#INIT RED LED on board
-led = DigitalInOut(board.D13)
-led.direction = Direction.OUTPUT
-led.value = 0
-
 ##INIT I2C CONNECTION ON RTC AND GET CURRENT DATE
-i2c = busio.I2C(board.SCL, board.SDA,frequency=400000)
-rtc = adafruit_pcf8523.PCF8523(i2c)
+i2c = I2C(board.SCL, board.SDA,frequency=400000)
+rtc = PCF8523(i2c)
 if 'i2c' in locals() and 'rtc' in locals():
     now = rtc.datetime
     print(now)
 else:
-    print("i2c bus and RTC not initialized !")
-    led.value = 1
-    time.sleep(10)
     quit()
     
 #INIT VARIABLES
@@ -122,14 +115,14 @@ def opendoor(dc,runtime):
     Inactive()
     MotDir(2)
     Active(dc)
-    time.sleep(runtime)
+    sleep(runtime)
     Inactive()
 
 def closedoor(dc,runtime):
     Inactive()
     MotDir(3)
     Active(dc)
-    time.sleep(runtime)
+    sleep(runtime)
     Inactive()
 
 print("function def completed")
@@ -148,7 +141,7 @@ while True:
     #refresh current time
     now = rtc.datetime
     #vtime=(2018,12,15,16,15,39,-1,-1,-1) #(tm_year=2018, tm_mon=7, tm_mday=10, tm_hour=18, tm_min=22, tm_sec=39, tm_wday=2, tm_yday=-1, tm_isdst=-1)
-    #now= time.struct_time(vtime)
+    #now= struct_time(vtime)
     n,dfrac=calcjuliandate2000(now)
     print("now=",now,"n=",n,"dfrac=",dfrac,"n+dfrac=",n+dfrac)
     #calculate sunrise and sunset of today
@@ -178,7 +171,7 @@ while True:
 		timetowait=(next_sunset-(n+dfrac))*24*60*60
 		print("Block door.open()"," - timetowait=",timetowait)
         #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
-		time.sleep(timetowait)#5)
+		sleep(timetowait)#5)
     #Close at sunset
     elif (n+dfrac) > today_sunset and (n+dfrac) < next_sunrise and status==1:
 		closedoor(RV_dc,close_runtime)
@@ -188,7 +181,7 @@ while True:
 		timetowait=(next_sunrise-(n+dfrac))*24*60*60
 		print("Block door.close()", "status after=",status, "timetowait(h)=",timetowait/3600)
         #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
-		time.sleep(timetowait)#5)
+		sleep(timetowait)#5)
     #Close before sunrise in case door re-init before (unlikely but never know...)
     elif (n+dfrac) < today_sunrise and (n+dfrac) < next_sunset and status==1:
 		#door.close()
@@ -196,9 +189,9 @@ while True:
 		timetowait=(next_sunrise-(n+dfrac))*24*60*60
 		print("Block door.close if before sunrise"," - timetowait(h)=",timetowait/3600)
         #print("door status=",status, "next_sunrise=",next_sunrise,"next_sunset=",next_sunset, "timetowait=",timetowait,"next_sunset-n=",next_sunset-n)
-		time.sleep(timetowait)#5)
+		sleep(timetowait)#5)
     #When time precision does not allow to decide, wait 1 min to re-run loop
     else:
 		timetowait=(min(next_sunrise, next_sunset)-(n+dfrac))*24*60*60
 		print("Block wait a bit more"," - timetowait(h)=",timetowait/3600)
-		time.sleep(timetowait+60)
+		sleep(timetowait+60)
