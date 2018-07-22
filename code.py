@@ -32,7 +32,7 @@ longitude=4.677301 #West
 latitude=50.645144 #North
 altitude=150 #meters above sea level
 #motor control variables
-status=0 #(Door closed by default at start)
+status=1 #(Door opened by default at start)
 # motor rotation
 STOP = 1
 FWD = 2
@@ -131,10 +131,16 @@ print("function def completed")
 ##RUN PROGRAM
 # Safety checks - Motor in stopped mode after small moves
 Inactive()
-opendoor(80,0.2)
-Inactive()
-closedoor(80,0.2)
-Inactive()
+if status = 1:
+	closedoor(80,0.2)
+	Inactive()
+	opendoor(80,0.2)
+	Inactive()
+else:
+	opendoor(80,0.2)
+	Inactive()
+	closedoor(80,0.2)
+	Inactive()
 
 print("start of infinite loop")
 while True:
