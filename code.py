@@ -24,11 +24,6 @@ RV_pin.value=0
 STOP = 1
 FWD = 2
 REV = 3
-## Duty cycles
-open_runtime = 22.00
-close_runtime = 22.00
-FW_dc=100
-RV_dc=100
 
 ##FUNCTION DEFINITION
 def MotDir(rot):
@@ -66,7 +61,13 @@ def closedoor(dc,runtime):
     time.sleep(runtime)
     Inactive()
 
-for i in range(0,100,1):
+## Runtimes and Duty cycles
+open_runtime = 22.00
+close_runtime = 22.00
+FW_dc=100
+RV_dc=100
+#Test loop
+for i in range(0,1,1):
 	closedoor(RV_dc,close_runtime)
 	Inactive()
 	time.sleep(3)
