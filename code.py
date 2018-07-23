@@ -28,8 +28,8 @@ else:
     
 #INIT VARIABLES
 #time calculation variables
-longitude=4.677301 #West
-latitude=50.645144 #North
+longitude=4.00000 #West - precise your location
+latitude=50.00000 #North - precise your location
 altitude=150 #meters above sea level
 #motor control variables
 status=1 #(Door opened by default at start)
@@ -41,8 +41,8 @@ REV = 3
 FW_dc=100
 RV_dc=100
 #opening/closing time (sec)
-open_runtime = 22.00
-close_runtime = 22.00
+open_runtime = 21.00
+close_runtime = 21.60
 
 ##DEFINE FUNCTIONS
 print("function def starting")
