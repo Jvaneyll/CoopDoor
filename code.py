@@ -131,16 +131,11 @@ print("function def completed")
 ##RUN PROGRAM
 # Safety checks - Motor in stopped mode after small moves
 Inactive()
-if status = 1:
-	closedoor(80,0.2)
-	Inactive()
-	opendoor(80,0.2)
-	Inactive()
-else:
-	opendoor(80,0.2)
-	Inactive()
-	closedoor(80,0.2)
-	Inactive()
+closedoor(80,0.2)
+Inactive()
+sleep(1)
+opendoor(80,0.2)
+Inactive()
 
 print("start of infinite loop")
 while True:
